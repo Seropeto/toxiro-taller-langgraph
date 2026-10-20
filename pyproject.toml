@@ -1,0 +1,21 @@
+[project]
+name = "toxiro-taller-langgraph"
+version = "0.1.0"
+description = "Taller mecánico multiagente con LangGraph"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "langgraph>=1.2,<2",
+    "langchain-anthropic",
+    "langsmith",
+    "python-dotenv",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
