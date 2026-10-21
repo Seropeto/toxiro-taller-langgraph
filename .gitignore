@@ -6,3 +6,6 @@ __pycache__/
 
 # PDFs de documentos: se versiona solo el .md
 docs/**/*.pdf
+
+# Base local de casos (checkpoints SQLite, incluye -wal y -shm)
+casos.sqlite*

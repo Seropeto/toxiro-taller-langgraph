@@ -22,8 +22,11 @@ def rutear_por_intencion(estado: EstadoTaller) -> Intencion:
     return estado["intencion"]
 
 
-def construir_grafo(decidir_evaluacion: DecisionEvaluador = evaluar_mano_de_obra):
-    """decidir_evaluacion permite inyectar la decisión del Evaluador (p. ej. un guion en tests)."""
+def construir_grafo(decidir_evaluacion: DecisionEvaluador = evaluar_mano_de_obra, checkpointer=None):
+    """decidir_evaluacion permite inyectar la decisión del Evaluador (p. ej. un guion en tests).
+
+    checkpointer: SqliteSaver en main.py, InMemorySaver en tests; sin él, el grafo no guarda casos.
+    """
     builder = StateGraph(EstadoTaller, context_schema=TenantContext)
     builder.add_node("router", router)
     builder.add_node("diagnostico", diagnostico)
@@ -47,7 +50,7 @@ def construir_grafo(decidir_evaluacion: DecisionEvaluador = evaluar_mano_de_obra
     )
     builder.add_edge("escalar", END)
     builder.add_edge("respuesta_directa", END)
-    return builder.compile().with_config(recursion_limit=config.LIMITE_RECURSION)
+    return builder.compile(checkpointer=checkpointer).with_config(recursion_limit=config.LIMITE_RECURSION)
 
 
 def exportar_imagen(destino: Path = Path("docs")) -> None:

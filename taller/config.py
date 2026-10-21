@@ -13,7 +13,12 @@ MAX_REINTENTOS: int = int(os.getenv("MAX_REINTENTOS", "2"))
 # luego router y diagnostico, presupuestador + evaluador en cada pasada, y escalar.
 PASOS_PEOR_CASO: int = 1 + 2 + 2 * (MAX_REINTENTOS + 1) + 1
 # El valor por defecto de langgraph 1.2.16 es 10007: un error en el ruteo daría miles de vueltas.
+# El contador se reinicia en cada ejecución (también al retomar un caso): protege cada ejecución, no el
+# caso completo. Entre retomes, lo que acota el ciclo es `intentos`, que sí se guarda en el checkpoint.
 LIMITE_RECURSION: int = PASOS_PEOR_CASO + 5
+
+# Base SQLite de los casos (checkpoints) que usa main.py; excluida de git. Los tests usan memoria.
+RUTA_BASE_CASOS: str = os.getenv("RUTA_BASE_CASOS", "casos.sqlite")
 
 # Versión fija (no alias) para comparar con producción y tener tests de integración reproducibles.
 MODELO_ROUTER: str = os.getenv("MODELO_ROUTER", "claude-haiku-4-5-20251001")

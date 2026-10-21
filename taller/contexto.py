@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 RUTA_EJEMPLO = Path(__file__).parent / "datos" / "tenant_ejemplo.json"
+# Catálogo sin FRE-PAS-DEL: hace fallar al Presupuestador para demostrar el retome de un caso (LG-004).
+RUTA_SIN_PASTILLAS = Path(__file__).parent / "datos" / "tenant_sin_pastillas.json"
 
 
 @dataclass(frozen=True)
@@ -23,6 +25,12 @@ class TenantContext:
     margenes: dict[str, float]
 
     def item(self, codigo: str) -> ItemCatalogo:
+        """Busca un ítem por código.
+
+        Comportamiento simulado: un ítem faltante lanza KeyError y corta la ejecución (el caso queda
+        guardado y se puede retomar). Según las reglas del negocio, un ítem faltante en el catálogo
+        debería escalarse a revisión en lugar de fallar.
+        """
         for item in self.catalogo:
             if item.codigo == codigo:
                 return item

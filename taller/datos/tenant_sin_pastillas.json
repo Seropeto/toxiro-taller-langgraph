@@ -1,0 +1,13 @@
+{
+  "nombre_taller": "Taller Toxiro Centro",
+  "catalogo": [
+    {"codigo": "FRE-DIS-DEL", "descripcion": "Disco de freno delantero", "categoria": "repuestos", "precio": 1150.0},
+    {"codigo": "LUB-ACE-5W30", "descripcion": "Aceite sintético 5W-30 (4 L)", "categoria": "lubricantes", "precio": 620.0},
+    {"codigo": "MO-FRENOS", "descripcion": "Mano de obra cambio de pastillas", "categoria": "mano_de_obra", "precio": 400.0}
+  ],
+  "margenes": {
+    "repuestos": 0.30,
+    "lubricantes": 0.20,
+    "mano_de_obra": 0.0
+  }
+}

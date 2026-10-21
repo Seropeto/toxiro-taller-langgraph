@@ -14,6 +14,9 @@ def presupuestador(estado: EstadoTaller, runtime: Runtime[TenantContext]) -> Est
 
     Simulado: la primera pasada omite la mano de obra a propósito, para ejercitar el ciclo con el
     Evaluador; si hay retroalimentaciones, la agrega.
+
+    Si el catálogo no tiene un ítem, TenantContext.item lanza KeyError (comportamiento simulado; según
+    las reglas del negocio debería escalarse). main.py lo usa con --contexto para demostrar el retome.
     """
     contexto = runtime.context
     if contexto is None:
