@@ -1,9 +1,11 @@
 """Grafo del taller.
 
-START -> router -> diagnostico -> presupuestador -> evaluador -> END       (aprobado)
-               |                        ^              |-> presupuestador (rechazado, reintento)
-               |                        +--------------+-> escalar -> END (escalada)
-               +-> respuesta_directa -> END                               (fuera_de_alcance)
+START -> router -> diagnostico -> presupuestador -> evaluador -> END                  (aprobado)
+               |                        ^              |-> presupuestador            (rechazado, reintento)
+               |                        |              +-> preparar_revision -> revision_humana (escalada)
+               |                        +------------------------------------------- |  (corregir)
+               |                                                       END <-------- +  (aprobar, cancelar)
+               +-> respuesta_directa -> END                                          (fuera_de_alcance)
 """
 
 from pathlib import Path
@@ -13,9 +15,9 @@ from langgraph.graph import END, START, StateGraph
 from . import config
 from .contexto import TenantContext
 from .estado import EstadoTaller, Intencion
-from .nodos import diagnostico, escalar, presupuestador, respuesta_directa, router
+from .nodos import diagnostico, preparar_revision, presupuestador, respuesta_directa, revision_humana, router
 from .nodos.evaluador import DecisionEvaluador, crear_evaluador, evaluar_mano_de_obra
-from .ruteo import rutear_por_veredicto
+from .ruteo import rutear_por_decision, rutear_por_veredicto
 
 
 def rutear_por_intencion(estado: EstadoTaller) -> Intencion:
@@ -25,14 +27,16 @@ def rutear_por_intencion(estado: EstadoTaller) -> Intencion:
 def construir_grafo(decidir_evaluacion: DecisionEvaluador = evaluar_mano_de_obra, checkpointer=None):
     """decidir_evaluacion permite inyectar la decisión del Evaluador (p. ej. un guion en tests).
 
-    checkpointer: SqliteSaver en main.py, InMemorySaver en tests; sin él, el grafo no guarda casos.
+    checkpointer: SqliteSaver en main.py, InMemorySaver en tests. Sin él, el grafo no guarda casos ni
+    puede pausarse en revision_humana (interrupt necesita checkpointer).
     """
     builder = StateGraph(EstadoTaller, context_schema=TenantContext)
     builder.add_node("router", router)
     builder.add_node("diagnostico", diagnostico)
     builder.add_node("presupuestador", presupuestador)
     builder.add_node("evaluador", crear_evaluador(decidir_evaluacion))
-    builder.add_node("escalar", escalar)
+    builder.add_node("preparar_revision", preparar_revision)
+    builder.add_node("revision_humana", revision_humana)
     builder.add_node("respuesta_directa", respuesta_directa)
 
     builder.add_edge(START, "router")
@@ -46,9 +50,14 @@ def construir_grafo(decidir_evaluacion: DecisionEvaluador = evaluar_mano_de_obra
     builder.add_conditional_edges(
         "evaluador",
         rutear_por_veredicto,
-        {"fin": END, "escalar": "escalar", "presupuestador": "presupuestador"},
+        {"fin": END, "escalar": "preparar_revision", "presupuestador": "presupuestador"},
     )
-    builder.add_edge("escalar", END)
+    builder.add_edge("preparar_revision", "revision_humana")
+    builder.add_conditional_edges(
+        "revision_humana",
+        rutear_por_decision,
+        {"fin": END, "presupuestador": "presupuestador"},
+    )
     builder.add_edge("respuesta_directa", END)
     return builder.compile(checkpointer=checkpointer).with_config(recursion_limit=config.LIMITE_RECURSION)
 

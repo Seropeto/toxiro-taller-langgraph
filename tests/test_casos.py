@@ -1,7 +1,6 @@
 """Casos persistidos con checkpointer: historial, retome tras una falla, reglas de apertura y aislamiento."""
 
 import pytest
-from conftest import ModeloFalso, modulo_router, salida_llm
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 
@@ -20,19 +19,6 @@ from taller.casos import (
 from taller.contexto import RUTA_SIN_PASTILLAS, cargar_contexto
 from taller.escenarios import ESCENARIOS
 from taller.grafo import construir_grafo
-
-
-@pytest.fixture
-def llamadas_router(monkeypatch):
-    """Router falso que cuenta cuántas veces se construye el LLM (una por ejecución del nodo router)."""
-    llamadas = []
-
-    def crear():
-        llamadas.append(1)
-        return ModeloFalso(messages=iter([salida_llm(intencion="diagnostico", justificacion="Falla mecánica.")]))
-
-    monkeypatch.setattr(modulo_router, "crear_modelo", crear)
-    return llamadas
 
 
 @pytest.fixture
@@ -87,8 +73,10 @@ def test_historial_un_checkpoint_por_paso_con_las_tres_pasadas(saver, llamadas_r
         ["item_omitido", "margen_incorrecto"],
         ["item_omitido", "margen_incorrecto", "item_duplicado"],
     ]
-    assert all(p.resultado_final is None for p in historial[:-1])
-    assert historial[-1].resultado_final == "escalado"
+    # Escaló: el último checkpoint es la pausa en revision_humana, sin resultado final.
+    assert all(p.resultado_final is None for p in historial)
+    assert historial[-1].siguiente == ("revision_humana",)
+    assert historial[-1].en_pausa and historial[-1].causa_escalada == "maximo_reintentos"
 
 
 def test_falla_en_presupuestador_y_retome_sin_repetir_el_router(
@@ -174,13 +162,14 @@ def test_el_escenario_se_guarda_en_los_metadatos_y_sobrevive_al_retome(
     grafo = grafo_con(saver, "motivo_repetido")
     with pytest.raises(KeyError):
         iniciar_caso(grafo, entrada, contexto_sin_pastillas, thread_id="t", metadatos={"escenario": "motivo_repetido"})
-    assert metadatos_caso(grafo, "t") == {"escenario": "motivo_repetido"}
+    esperados = {"escenario": "motivo_repetido", "version_contexto": contexto_sin_pastillas.version}
+    assert metadatos_caso(grafo, "t") == esperados
 
     ejecucion = retomar_caso(grafo, "t", contexto)
 
     assert ejecucion.estado["origen_intencion"] == "llm"
     assert ejecucion.estado["causa_escalada"] == "motivo_repetido"
-    assert metadatos_caso(grafo, "t") == {"escenario": "motivo_repetido"}
+    assert metadatos_caso(grafo, "t") == esperados
 
 
 def test_tenant_context_no_aparece_en_los_checkpoints(

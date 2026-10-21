@@ -2,13 +2,14 @@ from collections.abc import Callable
 
 from pydantic import BaseModel, model_validator
 
-from ..estado import EstadoTaller, Motivo, Veredicto
+from ..estado import EstadoTaller, MotivoEvaluador, Veredicto
 
 
 class SalidaEvaluador(BaseModel):
     veredicto: Veredicto
     # Obligatorio si el veredicto es rechazado; prohibido en cualquier otro caso.
-    motivo: Motivo | None = None
+    # El Evaluador no puede emitir instruccion_supervisor.
+    motivo: MotivoEvaluador | None = None
     detalle: str
 
     @model_validator(mode="after")
@@ -37,12 +38,16 @@ def evaluar_mano_de_obra(estado: EstadoTaller) -> SalidaEvaluador:
 def crear_evaluador(decidir: DecisionEvaluador = evaluar_mano_de_obra):
     """Nodo Evaluador con la decisión inyectable; la contabilidad es la misma en producción y tests.
 
-    Solo este nodo incrementa intentos, y solo al rechazar. La retroalimentación se agrega solo al rechazar.
+    Solo este nodo incrementa intentos (al rechazar) y evaluaciones (siempre).
+    La retroalimentación del Evaluador se agrega solo al rechazar.
     """
 
     def evaluador(estado: EstadoTaller) -> EstadoTaller:
         salida = decidir(estado)
-        actualizacion: EstadoTaller = {"evaluacion": salida.model_dump()}
+        actualizacion: EstadoTaller = {
+            "evaluacion": salida.model_dump(),
+            "evaluaciones": estado.get("evaluaciones", 0) + 1,
+        }
         if salida.veredicto == "rechazado":
             actualizacion["intentos"] = estado.get("intentos", 0) + 1
             actualizacion["retroalimentaciones"] = [{"motivo": salida.motivo, "detalle": salida.detalle}]

@@ -1,5 +1,6 @@
 {
   "nombre_taller": "Taller Toxiro Centro",
+  "version": "2026.10.1",
   "catalogo": [
     {"codigo": "FRE-DIS-DEL", "descripcion": "Disco de freno delantero", "categoria": "repuestos", "precio": 1150.0},
     {"codigo": "LUB-ACE-5W30", "descripcion": "Aceite sintético 5W-30 (4 L)", "categoria": "lubricantes", "precio": 620.0},

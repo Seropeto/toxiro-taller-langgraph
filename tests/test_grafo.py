@@ -67,7 +67,7 @@ def test_contexto_no_aparece_en_el_estado(usar_modelo, entrada, contexto):
     assert not any(isinstance(valor, TenantContext) for valor in estado.values())
 
 
-def test_grafo_bifurca_desde_router_y_cicla_desde_evaluador():
+def test_grafo_bifurca_desde_router_cicla_desde_evaluador_y_vuelve_desde_la_revision():
     dibujo = construir_grafo().get_graph()
     aristas = {(a.source, a.target) for a in dibujo.edges}
     assert aristas == {
@@ -77,9 +77,11 @@ def test_grafo_bifurca_desde_router_y_cicla_desde_evaluador():
         ("diagnostico", "presupuestador"),
         ("presupuestador", "evaluador"),
         ("evaluador", "presupuestador"),
-        ("evaluador", "escalar"),
+        ("evaluador", "preparar_revision"),
         ("evaluador", "__end__"),
-        ("escalar", "__end__"),
+        ("preparar_revision", "revision_humana"),
+        ("revision_humana", "presupuestador"),
+        ("revision_humana", "__end__"),
         ("respuesta_directa", "__end__"),
     }
     condicionales = {(a.source, a.target) for a in dibujo.edges if a.conditional}
@@ -87,6 +89,8 @@ def test_grafo_bifurca_desde_router_y_cicla_desde_evaluador():
         ("router", "diagnostico"),
         ("router", "respuesta_directa"),
         ("evaluador", "presupuestador"),
-        ("evaluador", "escalar"),
+        ("evaluador", "preparar_revision"),
         ("evaluador", "__end__"),
+        ("revision_humana", "presupuestador"),
+        ("revision_humana", "__end__"),
     }

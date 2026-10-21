@@ -31,6 +31,7 @@ def test_salidas_validas(datos):
         ({"veredicto": "rechazado", "motivo": "item_omitido", "detalle": "  "}, "detalle no puede venir vacío"),
         ({"veredicto": "escalar", "detalle": ""}, "detalle no puede venir vacío"),
         ({"veredicto": "rechazado", "motivo": "precio_alto", "detalle": "x"}, "motivo"),
+        ({"veredicto": "rechazado", "motivo": "instruccion_supervisor", "detalle": "x"}, "motivo"),
         ({"veredicto": "pendiente", "detalle": "x"}, "veredicto"),
     ],
     ids=[
@@ -40,6 +41,7 @@ def test_salidas_validas(datos):
         "rechazado_detalle_vacio",
         "escalar_detalle_vacio",
         "motivo_fuera_del_conjunto",
+        "motivo_del_supervisor",
         "veredicto_fuera_del_conjunto",
     ],
 )
@@ -90,4 +92,17 @@ def test_escalar_no_toca_intentos_ni_retroalimentaciones_ni_resultado():
 
     actualizacion = evaluador_que_responde(salida)({"sintoma": "x", "intentos": 1})
 
-    assert set(actualizacion) == {"evaluacion"}  # el resultado lo escribe el nodo escalar
+    assert set(actualizacion) == {"evaluacion", "evaluaciones"}  # la causa la escribe preparar_revision
+
+
+@pytest.mark.parametrize(
+    "salida",
+    [
+        SalidaEvaluador(veredicto="aprobado", detalle="ok"),
+        SalidaEvaluador(veredicto="rechazado", motivo="item_omitido", detalle="x"),
+        SalidaEvaluador(veredicto="escalar", detalle="x"),
+    ],
+    ids=["aprobado", "rechazado", "escalar"],
+)
+def test_cada_evaluacion_incrementa_evaluaciones(salida):
+    assert evaluador_que_responde(salida)({"sintoma": "x", "evaluaciones": 2})["evaluaciones"] == 3

@@ -9,8 +9,11 @@ load_dotenv()
 # Reintentos del ciclo Evaluador -> Presupuestador: el Presupuestador corre como máximo MAX_REINTENTOS + 1 veces.
 MAX_REINTENTOS: int = int(os.getenv("MAX_REINTENTOS", "2"))
 
-# Supersteps del peor caso (escalada por máximo de reintentos): la entrada cuenta como un paso,
-# luego router y diagnostico, presupuestador + evaluador en cada pasada, y escalar.
+# Supersteps del peor caso por ejecución (escalada por máximo de reintentos): la entrada cuenta como
+# un paso, luego router y diagnostico, presupuestador + evaluador en cada pasada, y preparar_revision.
+# El paso en que revision_humana se pausa con interrupt no consume el límite (medido en langgraph 1.2.16;
+# lo verifica tests/test_bucle.py con el valor exacto). La reanudación tras una corrección necesita menos
+# (7 con MAX_REINTENTOS = 2): no repite entrada, router ni diagnostico.
 PASOS_PEOR_CASO: int = 1 + 2 + 2 * (MAX_REINTENTOS + 1) + 1
 # El valor por defecto de langgraph 1.2.16 es 10007: un error en el ruteo daría miles de vueltas.
 # El contador se reinicia en cada ejecución (también al retomar un caso): protege cada ejecución, no el

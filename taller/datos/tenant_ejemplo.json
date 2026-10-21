@@ -1,5 +1,6 @@
 {
   "nombre_taller": "Taller Toxiro Centro",
+  "version": "2026.10.1",
   "catalogo": [
     {"codigo": "FRE-PAS-DEL", "descripcion": "Juego de pastillas de freno delanteras", "categoria": "repuestos", "precio": 780.0},
     {"codigo": "FRE-DIS-DEL", "descripcion": "Disco de freno delantero", "categoria": "repuestos", "precio": 1150.0},

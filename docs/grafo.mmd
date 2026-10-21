@@ -9,18 +9,21 @@ graph TD;
 	diagnostico(diagnostico)
 	presupuestador(presupuestador)
 	evaluador(evaluador)
-	escalar(escalar)
+	preparar_revision(preparar_revision)
+	revision_humana(revision_humana)
 	respuesta_directa(respuesta_directa)
 	__end__([<p>__end__</p>]):::last
 	__start__ --> router;
 	diagnostico --> presupuestador;
 	evaluador -. &nbsp;fin&nbsp; .-> __end__;
-	evaluador -.-> escalar;
+	evaluador -. &nbsp;escalar&nbsp; .-> preparar_revision;
 	evaluador -.-> presupuestador;
+	preparar_revision --> revision_humana;
 	presupuestador --> evaluador;
+	revision_humana -. &nbsp;fin&nbsp; .-> __end__;
+	revision_humana -.-> presupuestador;
 	router -.-> diagnostico;
 	router -. &nbsp;fuera_de_alcance&nbsp; .-> respuesta_directa;
-	escalar --> __end__;
 	respuesta_directa --> __end__;
 	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0

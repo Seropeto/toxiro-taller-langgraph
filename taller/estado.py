@@ -10,9 +10,14 @@ Intencion = Literal["diagnostico", "fuera_de_alcance"]
 OrigenIntencion = Literal["llm", "respaldo_contenido", "respaldo_servicio"]
 
 Veredicto = Literal["aprobado", "rechazado", "escalar"]
-Motivo = Literal["hipotesis_excluida", "item_duplicado", "margen_incorrecto", "item_omitido"]
+# Motivos que puede emitir el Evaluador.
+MotivoEvaluador = Literal["hipotesis_excluida", "item_duplicado", "margen_incorrecto", "item_omitido"]
+# Motivos que pueden aparecer en retroalimentaciones: los del Evaluador más la corrección del supervisor.
+MotivoRetroalimentacion = Literal[MotivoEvaluador, "instruccion_supervisor"]
 CausaEscalada = Literal["decision_evaluador", "motivo_repetido", "maximo_reintentos"]
-ResultadoFinal = Literal["aprobado", "escalado", "fuera_de_alcance"]
+AccionSupervisor = Literal["aprobar", "corregir", "cancelar"]
+# Un caso en revisión humana no tiene resultado final: está pendiente.
+ResultadoFinal = Literal["aprobado", "cancelado", "fuera_de_alcance"]
 
 
 class Hipotesis(TypedDict):
@@ -35,7 +40,7 @@ class Presupuesto(TypedDict):
     subtotal: float
     iva: float
     total: float
-    # Retroalimentaciones del Evaluador tenidas en cuenta al armar este presupuesto.
+    # Retroalimentaciones (del Evaluador o del supervisor) tenidas en cuenta al armar este presupuesto.
     correcciones_aplicadas: int
 
 
@@ -43,13 +48,33 @@ class Evaluacion(TypedDict):
     """Última salida del Evaluador (SalidaEvaluador serializada)."""
 
     veredicto: Veredicto
-    motivo: Motivo | None
+    motivo: MotivoEvaluador | None
     detalle: str
 
 
 class Retroalimentacion(TypedDict):
-    motivo: Motivo
+    motivo: MotivoRetroalimentacion
     detalle: str
+
+
+class DecisionHumana(TypedDict):
+    """Última decisión del supervisor (DecisionSupervisor serializada)."""
+
+    accion: AccionSupervisor
+    instruccion: str | None
+    revisor: str
+
+
+class PaqueteRevision(TypedDict):
+    """Lo que ve el supervisor. Serializable a JSON: es el valor del interrupt."""
+
+    sintoma: str
+    hipotesis: list[Hipotesis]
+    presupuesto: Presupuesto
+    evaluacion: Evaluacion
+    retroalimentaciones: list[Retroalimentacion]
+    causa_escalada: CausaEscalada
+    aviso_version_contexto: str | None
 
 
 class EstadoTaller(TypedDict, total=False):
@@ -61,10 +86,16 @@ class EstadoTaller(TypedDict, total=False):
     hipotesis: list[Hipotesis]
     presupuesto: Presupuesto
     evaluacion: Evaluacion
-    # Reductor: la lista que devuelve cada nodo se concatena a la existente. Solo se agrega al rechazar.
+    # Reductor: la lista que devuelve cada nodo se concatena a la existente.
+    # Se agrega al rechazar (Evaluador) o al corregir (supervisor).
     retroalimentaciones: Annotated[list[Retroalimentacion], operator.add]
-    # Solo el Evaluador lo incrementa, y solo al rechazar: cuenta rechazos.
+    # Solo el Evaluador lo incrementa, y solo al rechazar: cuenta rechazos. La revisión humana no lo reinicia.
     intentos: int
-    resultado_final: ResultadoFinal
+    # Evaluaciones hechas, con cualquier veredicto. Solo lo incrementa el Evaluador.
+    evaluaciones: int
     causa_escalada: CausaEscalada
-    decision_humana: str | None
+    paquete_revision: PaqueteRevision
+    decision_humana: DecisionHumana | None
+    # Resultado de la última comprobación de versión del TenantContext al resolver una revisión.
+    aviso_version_contexto: str | None
+    resultado_final: ResultadoFinal

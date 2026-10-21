@@ -55,6 +55,19 @@ def usar_modelo(monkeypatch):
 
 
 @pytest.fixture
+def llamadas_router(monkeypatch):
+    """Router falso (diagnóstico) que cuenta cuántas veces se construye el LLM: una por ejecución del router."""
+    llamadas = []
+
+    def crear():
+        llamadas.append(1)
+        return ModeloFalso(messages=iter([salida_llm(intencion="diagnostico", justificacion="Falla mecánica.")]))
+
+    monkeypatch.setattr(modulo_router, "crear_modelo", crear)
+    return llamadas
+
+
+@pytest.fixture
 def contexto():
     return cargar_contexto()
 
