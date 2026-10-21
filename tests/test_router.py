@@ -96,6 +96,7 @@ def test_respuesta_directa_elige_mensaje_por_origen(usar_modelo, entrada, contex
     assert estado["intencion"] == "fuera_de_alcance"
     assert estado["origen_intencion"] == origen
     assert estado["mensaje_respuesta"] == mensaje
+    assert estado["resultado_final"] == "fuera_de_alcance"
     assert "hipotesis" not in estado
 
 

@@ -9,6 +9,11 @@ Intencion = Literal["diagnostico", "fuera_de_alcance"]
 # respaldo_servicio: la llamada a la API falló (autenticación, red, saturación).
 OrigenIntencion = Literal["llm", "respaldo_contenido", "respaldo_servicio"]
 
+Veredicto = Literal["aprobado", "rechazado", "escalar"]
+Motivo = Literal["hipotesis_excluida", "item_duplicado", "margen_incorrecto", "item_omitido"]
+CausaEscalada = Literal["decision_evaluador", "motivo_repetido", "maximo_reintentos"]
+ResultadoFinal = Literal["aprobado", "escalado", "fuera_de_alcance"]
+
 
 class Hipotesis(TypedDict):
     causa: str
@@ -18,6 +23,7 @@ class Hipotesis(TypedDict):
 
 class ItemPresupuesto(TypedDict):
     descripcion: str
+    categoria: str
     cantidad: int
     precio_unitario: float
     subtotal: float
@@ -29,11 +35,21 @@ class Presupuesto(TypedDict):
     subtotal: float
     iva: float
     total: float
+    # Retroalimentaciones del Evaluador tenidas en cuenta al armar este presupuesto.
+    correcciones_aplicadas: int
 
 
 class Evaluacion(TypedDict):
-    veredicto: Literal["aprobado", "rechazado"]
-    retroalimentacion: str
+    """Última salida del Evaluador (SalidaEvaluador serializada)."""
+
+    veredicto: Veredicto
+    motivo: Motivo | None
+    detalle: str
+
+
+class Retroalimentacion(TypedDict):
+    motivo: Motivo
+    detalle: str
 
 
 class EstadoTaller(TypedDict, total=False):
@@ -45,8 +61,10 @@ class EstadoTaller(TypedDict, total=False):
     hipotesis: list[Hipotesis]
     presupuesto: Presupuesto
     evaluacion: Evaluacion
-    # Reductor: la lista que devuelve cada nodo se concatena a la existente.
-    retroalimentaciones: Annotated[list[str], operator.add]
-    # Solo el Evaluador lo incrementa (cuenta rechazos).
+    # Reductor: la lista que devuelve cada nodo se concatena a la existente. Solo se agrega al rechazar.
+    retroalimentaciones: Annotated[list[Retroalimentacion], operator.add]
+    # Solo el Evaluador lo incrementa, y solo al rechazar: cuenta rechazos.
     intentos: int
+    resultado_final: ResultadoFinal
+    causa_escalada: CausaEscalada
     decision_humana: str | None

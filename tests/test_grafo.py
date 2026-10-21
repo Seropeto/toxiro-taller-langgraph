@@ -1,13 +1,8 @@
-from conftest import salida_llm
+from conftest import ejecutar, salida_llm
 
 from taller.contexto import TenantContext
 from taller.estado import EstadoTaller
 from taller.grafo import construir_grafo
-
-
-def recorrido(grafo, entrada, contexto) -> list[str]:
-    """Nodos ejecutados, en orden."""
-    return [nodo for paso in grafo.stream(entrada, context=contexto, stream_mode="updates") for nodo in paso]
 
 
 def test_estado_final_poblado(usar_modelo, entrada, contexto):
@@ -24,27 +19,42 @@ def test_estado_final_poblado(usar_modelo, entrada, contexto):
     assert presupuesto["items"]
     assert presupuesto["total"] == presupuesto["subtotal"] + presupuesto["iva"]
     assert estado["evaluacion"]["veredicto"] == "aprobado"
-    assert estado["intentos"] == 0  # el evaluador sigue sin incrementar hasta LG-003
-    assert len(estado["retroalimentaciones"]) == 1
+    assert estado["resultado_final"] == "aprobado"
+    # Caso normal: la primera pasada omite la mano de obra, se rechaza una vez y se aprueba la corrección.
+    assert estado["intentos"] == 1
+    assert estado["retroalimentaciones"] == [
+        {"motivo": "item_omitido", "detalle": "Falta la mano de obra del cambio de pastillas."}
+    ]
     assert "mensaje_respuesta" not in estado
 
 
 def test_recorrido_mecanico(usar_modelo, entrada, contexto):
     usar_modelo(salida_llm(intencion="diagnostico", justificacion="Falla mecánica."))
 
-    assert recorrido(construir_grafo(), entrada, contexto) == [
-        "router",
-        "diagnostico",
-        "presupuestador",
-        "evaluador",
-    ]
+    nodos, estado = ejecutar(construir_grafo(), entrada, contexto)
+
+    assert estado["origen_intencion"] == "llm"
+    assert nodos == ["router", "diagnostico", "presupuestador", "evaluador", "presupuestador", "evaluador"]
 
 
 def test_recorrido_fuera_de_alcance_no_pasa_por_diagnostico(usar_modelo, entrada, contexto):
     usar_modelo(salida_llm(intencion="fuera_de_alcance", justificacion="Pregunta por horarios."))
     entrada["sintoma"] = "¿A qué hora cierran el sábado?"
 
-    assert recorrido(construir_grafo(), entrada, contexto) == ["router", "respuesta_directa"]
+    nodos, estado = ejecutar(construir_grafo(), entrada, contexto)
+
+    assert estado["origen_intencion"] == "llm"
+    assert nodos == ["router", "respuesta_directa"]
+
+
+def test_fuera_de_alcance_marca_el_resultado_final(usar_modelo, entrada, contexto):
+    usar_modelo(salida_llm(intencion="fuera_de_alcance", justificacion="Pregunta por horarios."))
+
+    estado = construir_grafo().invoke(entrada, context=contexto)
+
+    assert estado["origen_intencion"] == "llm"
+    assert estado["resultado_final"] == "fuera_de_alcance"
+    assert "causa_escalada" not in estado
 
 
 def test_contexto_no_aparece_en_el_estado(usar_modelo, entrada, contexto):
@@ -52,11 +62,12 @@ def test_contexto_no_aparece_en_el_estado(usar_modelo, entrada, contexto):
 
     estado = construir_grafo().invoke(entrada, context=contexto)
 
+    assert estado["origen_intencion"] == "llm"
     assert set(estado) <= set(EstadoTaller.__annotations__)
     assert not any(isinstance(valor, TenantContext) for valor in estado.values())
 
 
-def test_grafo_bifurca_desde_router():
+def test_grafo_bifurca_desde_router_y_cicla_desde_evaluador():
     dibujo = construir_grafo().get_graph()
     aristas = {(a.source, a.target) for a in dibujo.edges}
     assert aristas == {
@@ -65,8 +76,17 @@ def test_grafo_bifurca_desde_router():
         ("router", "respuesta_directa"),
         ("diagnostico", "presupuestador"),
         ("presupuestador", "evaluador"),
+        ("evaluador", "presupuestador"),
+        ("evaluador", "escalar"),
         ("evaluador", "__end__"),
+        ("escalar", "__end__"),
         ("respuesta_directa", "__end__"),
     }
     condicionales = {(a.source, a.target) for a in dibujo.edges if a.conditional}
-    assert condicionales == {("router", "diagnostico"), ("router", "respuesta_directa")}
+    assert condicionales == {
+        ("router", "diagnostico"),
+        ("router", "respuesta_directa"),
+        ("evaluador", "presupuestador"),
+        ("evaluador", "escalar"),
+        ("evaluador", "__end__"),
+    }

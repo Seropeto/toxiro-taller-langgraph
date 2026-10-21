@@ -44,8 +44,12 @@ def usar_modelo(monkeypatch):
     """Reemplaza el LLM del router: usar_modelo(salida_llm(...)) o usar_modelo(modelo)."""
 
     def instalar(respuesta):
-        modelo = respuesta if isinstance(respuesta, ModeloFalso) else ModeloFalso(messages=iter([respuesta]))
-        monkeypatch.setattr(modulo_router, "crear_modelo", lambda: modelo)
+        if isinstance(respuesta, ModeloFalso):
+            crear = lambda: respuesta  # noqa: E731
+        else:
+            # Un modelo nuevo por llamada: el iterador de mensajes no se agota si el grafo corre varias veces.
+            crear = lambda: ModeloFalso(messages=iter([respuesta]))  # noqa: E731
+        monkeypatch.setattr(modulo_router, "crear_modelo", crear)
 
     return instalar
 
@@ -53,6 +57,17 @@ def usar_modelo(monkeypatch):
 @pytest.fixture
 def contexto():
     return cargar_contexto()
+
+
+def ejecutar(grafo, entrada, contexto) -> tuple[list[str], dict]:
+    """Ejecuta el grafo una vez y devuelve los nodos recorridos, en orden, y el estado final."""
+    nodos, estado = [], {}
+    for modo, datos in grafo.stream(entrada, context=contexto, stream_mode=["updates", "values"]):
+        if modo == "updates":
+            nodos.extend(datos)
+        else:
+            estado = datos
+    return nodos, estado
 
 
 @pytest.fixture

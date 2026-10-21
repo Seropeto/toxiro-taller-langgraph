@@ -20,4 +20,7 @@ MENSAJES: dict[OrigenIntencion, str] = {
 
 def respuesta_directa(estado: EstadoTaller) -> EstadoTaller:
     """Responde sin diagnosticar. Simulado: el mensaje depende de quién fijó la intención."""
-    return {"mensaje_respuesta": MENSAJES[estado.get("origen_intencion", "llm")]}
+    return {
+        "mensaje_respuesta": MENSAJES[estado.get("origen_intencion", "llm")],
+        "resultado_final": "fuera_de_alcance",
+    }
