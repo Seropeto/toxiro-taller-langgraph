@@ -9,12 +9,15 @@ graph TD;
 	diagnostico(diagnostico)
 	presupuestador(presupuestador)
 	evaluador(evaluador)
+	respuesta_directa(respuesta_directa)
 	__end__([<p>__end__</p>]):::last
 	__start__ --> router;
 	diagnostico --> presupuestador;
 	presupuestador --> evaluador;
-	router --> diagnostico;
+	router -.-> diagnostico;
+	router -. &nbsp;fuera_de_alcance&nbsp; .-> respuesta_directa;
 	evaluador --> __end__;
+	respuesta_directa --> __end__;
 	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0
 	classDef last fill:#bfb6fc

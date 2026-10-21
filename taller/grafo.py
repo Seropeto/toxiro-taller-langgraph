@@ -1,25 +1,40 @@
-"""Grafo lineal: START -> router -> diagnostico -> presupuestador -> evaluador -> END."""
+"""Grafo del taller.
+
+START -> router -> diagnostico -> presupuestador -> evaluador -> END
+               \\-> respuesta_directa -> END   (intención fuera_de_alcance)
+"""
 
 from pathlib import Path
 
 from langgraph.graph import END, START, StateGraph
 
-from .estado import EstadoTaller
-from .nodos import diagnostico, evaluador, presupuestador, router
+from .contexto import TenantContext
+from .estado import EstadoTaller, Intencion
+from .nodos import diagnostico, evaluador, presupuestador, respuesta_directa, router
+
+
+def rutear_por_intencion(estado: EstadoTaller) -> Intencion:
+    return estado["intencion"]
 
 
 def construir_grafo():
-    builder = StateGraph(EstadoTaller)
+    builder = StateGraph(EstadoTaller, context_schema=TenantContext)
     builder.add_node("router", router)
     builder.add_node("diagnostico", diagnostico)
     builder.add_node("presupuestador", presupuestador)
     builder.add_node("evaluador", evaluador)
+    builder.add_node("respuesta_directa", respuesta_directa)
 
     builder.add_edge(START, "router")
-    builder.add_edge("router", "diagnostico")
+    builder.add_conditional_edges(
+        "router",
+        rutear_por_intencion,
+        {"diagnostico": "diagnostico", "fuera_de_alcance": "respuesta_directa"},
+    )
     builder.add_edge("diagnostico", "presupuestador")
     builder.add_edge("presupuestador", "evaluador")
     builder.add_edge("evaluador", END)
+    builder.add_edge("respuesta_directa", END)
     return builder.compile()
 
 

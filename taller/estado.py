@@ -1,7 +1,13 @@
 """Estado compartido del grafo del taller."""
 
 import operator
-from typing import Annotated, Literal, TypedDict
+from typing import Annotated, Literal, Required, TypedDict
+
+Intencion = Literal["diagnostico", "fuera_de_alcance"]
+# llm: la intención vino del modelo.
+# respaldo_contenido: el modelo respondió, pero sin la herramienta o con una salida que no valida.
+# respaldo_servicio: la llamada a la API falló (autenticación, red, saturación).
+OrigenIntencion = Literal["llm", "respaldo_contenido", "respaldo_servicio"]
 
 
 class Hipotesis(TypedDict):
@@ -18,6 +24,7 @@ class ItemPresupuesto(TypedDict):
 
 
 class Presupuesto(TypedDict):
+    taller: str
     items: list[ItemPresupuesto]
     subtotal: float
     iva: float
@@ -30,8 +37,11 @@ class Evaluacion(TypedDict):
 
 
 class EstadoTaller(TypedDict, total=False):
-    sintoma: str
-    intencion: str
+    # Obligatorio solo a nivel de tipado: LangGraph no lo valida al invocar.
+    sintoma: Required[str]
+    intencion: Intencion
+    origen_intencion: OrigenIntencion
+    mensaje_respuesta: str
     hipotesis: list[Hipotesis]
     presupuesto: Presupuesto
     evaluacion: Evaluacion

@@ -5,8 +5,9 @@ description = "Taller mecánico multiagente con LangGraph"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "langgraph>=1.2,<2",
-    "langchain-anthropic",
+    "langchain-anthropic>=1.7,<2",
     "langsmith",
+    "pydantic>=2,<3",
     "python-dotenv",
 ]
 
@@ -19,3 +20,6 @@ package = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+# Los tests con Haiku real se corren a mano: uv run pytest -m integracion
+addopts = "-m 'not integracion'"
+markers = ["integracion: llama a la API real de Anthropic (requiere ANTHROPIC_API_KEY)"]
